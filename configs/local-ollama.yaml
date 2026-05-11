@@ -1,0 +1,40 @@
+scan:
+  name: local-deepseek-baseline
+  description: Baseline scan against a local Ollama model
+
+target:
+  type: ollama
+  base_url: http://localhost:11434
+  model: deepseek-r1:14b
+
+generation:
+  temperature: 0
+  max_tokens: 1024
+  timeout_seconds: 60
+
+probes:
+  include:
+    - all
+  exclude: []
+
+detectors:
+  enabled:
+    - regex
+    - keyword
+    - refusal
+
+reporting:
+  output_dir: reports
+  formats:
+    - json
+    - markdown
+  evidence: redacted
+
+thresholds:
+  fail_on: high
+  max_errors: 3
+
+limits:
+  max_probes: 50
+  requests_per_minute: 30
+  max_cost_usd: 0
