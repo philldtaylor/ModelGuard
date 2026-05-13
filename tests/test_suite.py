@@ -1,5 +1,6 @@
 import io
 import json
+import contextlib
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from types import SimpleNamespace
@@ -7,6 +8,7 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
+from garak_poc import __version__
 from garak_poc.cli import build_parser
 from garak_poc.config import load_scan_config
 from garak_poc.detectors import build_detector_registry
@@ -106,6 +108,57 @@ class ConfigTests(unittest.TestCase):
     def test_cli_parser_accepts_limit(self):
         args = build_parser().parse_args(["--limit", "2"])
         self.assertEqual(args.limit, 2)
+
+    def test_cli_help_short_flag_prints_polished_help(self):
+        parser = build_parser()
+        stdout = io.StringIO()
+        with self.assertRaises(SystemExit) as exc, redirect_stdout(stdout):
+            parser.parse_args(["-h"])
+
+        self.assertEqual(exc.exception.code, 0)
+        output = stdout.getvalue()
+        self.assertIn("garak_poc is a lightweight Python AI vulnerability scanner", output)
+        self.assertIn("Authorised use only:", output)
+        self.assertIn("Target Selection:", output)
+        self.assertIn("Scan Behavior:", output)
+        self.assertIn("Reporting:", output)
+        self.assertIn("Examples:", output)
+        self.assertIn("Example Ollama scans:", output)
+        self.assertIn("Exit codes:", output)
+        self.assertIn("--limit LIMIT", output)
+        self.assertIn("Timestamped filenames:", output)
+        self.assertIn("configs/local-ollama.yaml", output)
+        self.assertIn("http://localhost:11434", output)
+
+    def test_cli_help_long_flag_prints_polished_help(self):
+        parser = build_parser()
+        stdout = io.StringIO()
+        with self.assertRaises(SystemExit) as exc, redirect_stdout(stdout):
+            parser.parse_args(["--help"])
+
+        self.assertEqual(exc.exception.code, 0)
+        output = stdout.getvalue()
+        self.assertIn("python scanner.py --target ollama --model deepseek-r1:14b", output)
+        self.assertIn("0 = completed successfully", output)
+        self.assertIn("2+ = scanner/runtime/configuration errors", output)
+
+    def test_cli_version_flag_prints_version(self):
+        parser = build_parser()
+        stdout = io.StringIO()
+        with self.assertRaises(SystemExit) as exc, redirect_stdout(stdout):
+            parser.parse_args(["--version"])
+
+        self.assertEqual(exc.exception.code, 0)
+        self.assertEqual(stdout.getvalue().strip(), f"garak_poc {__version__}")
+
+    def test_cli_invalid_argument_returns_argparse_error(self):
+        parser = build_parser()
+        stderr = io.StringIO()
+        with self.assertRaises(SystemExit) as exc, contextlib.redirect_stderr(stderr):
+            parser.parse_args(["--no-such-flag"])
+
+        self.assertEqual(exc.exception.code, 2)
+        self.assertIn("unrecognized arguments: --no-such-flag", stderr.getvalue())
 
 
 class ProbeTests(unittest.TestCase):
