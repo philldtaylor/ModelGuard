@@ -50,6 +50,12 @@ def _render_findings(scan_result: ScanResult) -> str:
 
     items: list[str] = []
     for finding in scan_result.findings:
+        rationale = "No detector rationale recorded."
+        for detector in finding.get("detectors", []):
+            value = str(detector.get("rationale", "")).strip()
+            if value:
+                rationale = value
+                break
         items.append(
             "<section class=\"card\">"
             f"<h3>{escape_html(str(finding['id']))}: {escape_html(str(finding['title']))}</h3>"
@@ -58,6 +64,7 @@ def _render_findings(scan_result: ScanResult) -> str:
             f"<p><strong>Category:</strong> {escape_html(str(finding['category']))} | "
             f"<strong>Probe ID:</strong> {escape_html(str(finding['probe_id']))} | "
             f"<strong>Confidence:</strong> {escape_html(str(finding['confidence']))}</p>"
+            f"<p><strong>Rationale:</strong> {escape_html(rationale)}</p>"
             f"<div class=\"detail\"><div><strong>Response Excerpt</strong><pre>{escape_html(str(finding['response_excerpt']))}</pre></div></div>"
             f"<p><strong>Recommendation:</strong> {escape_html(str(finding['recommendation']))}</p>"
             "</section>"

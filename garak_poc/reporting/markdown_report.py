@@ -10,6 +10,14 @@ def _code_block(text: str) -> str:
     return f"```\n{text}\n```"
 
 
+def _finding_rationale(finding: dict[str, object]) -> str:
+    for detector in finding.get("detectors", []):
+        rationale = str(detector.get("rationale", "")).strip()
+        if rationale:
+            return rationale
+    return ""
+
+
 def _finding_evidence(finding: dict[str, object]) -> str:
     for detector in finding.get("detectors", []):
         rationale = str(detector.get("rationale", "")).strip()
@@ -70,6 +78,8 @@ def write_markdown_report(scan_result: ScanResult, output_path: str) -> None:
                     f"- Category: `{finding['category']}`",
                     f"- Probe ID: `{finding['probe_id']}`",
                     f"- Confidence: `{finding['confidence']}`",
+                    "",
+                    f"Rationale: {_finding_rationale(finding) or 'No detector rationale recorded.'}",
                     "",
                     "**Evidence**",
                     "",
