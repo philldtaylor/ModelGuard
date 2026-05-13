@@ -69,6 +69,9 @@ def load_scan_config(args: Any) -> ScanConfig:
     probes = args.probes.split(",") if getattr(args, "probes", None) else included
     probes = [item.strip() for item in probes if item.strip()]
     probes = _expand_probe_groups(probes)
+    probe_limit = getattr(args, "limit", None)
+    if probe_limit is not None and probe_limit < 1:
+        raise ConfigError("Probe limit must be greater than 0")
 
     output_dir = reporting_cfg.get("output_dir", "reports")
     markdown_path, json_path = _derive_outputs(args.out, output_dir, model)
@@ -102,6 +105,7 @@ def load_scan_config(args: Any) -> ScanConfig:
         model=model,
         base_url=base_url,
         probes=probes,
+        probe_limit=probe_limit,
         output_markdown=markdown_path,
         output_json=json_path,
         generation=generation,

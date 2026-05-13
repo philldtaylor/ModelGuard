@@ -13,6 +13,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--model", help="Target model name")
     parser.add_argument("--base-url", help="Target base URL")
     parser.add_argument("--probes", help="Comma-separated probe groups or probe ids")
+    parser.add_argument("--limit", type=int, help="Run only the first N selected probes")
     parser.add_argument("--out", help="Markdown output path; JSON will be written beside it")
     parser.add_argument("--fail-on", help="Severity threshold: info|low|medium|high|critical")
     return parser

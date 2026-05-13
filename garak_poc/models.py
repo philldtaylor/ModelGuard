@@ -15,6 +15,7 @@ class ScanConfig:
     model: str
     base_url: str
     probes: list[str]
+    probe_limit: int | None
     output_markdown: str
     output_json: str
     generation: dict[str, Any]

@@ -9,6 +9,20 @@ def _code_block(text: str) -> str:
     return f"```\n{text}\n```"
 
 
+def _finding_evidence(finding: dict[str, object]) -> str:
+    for detector in finding.get("detectors", []):
+        rationale = str(detector.get("rationale", "")).strip()
+        if rationale:
+            return rationale
+        evidence = str(detector.get("evidence", "")).strip()
+        if evidence:
+            return evidence
+    excerpt = str(finding.get("response_excerpt", "")).strip()
+    if excerpt:
+        return excerpt
+    return "No evidence captured."
+
+
 def write_markdown_report(scan_result: ScanResult, output_path: str) -> None:
     path = Path(output_path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -55,7 +69,7 @@ def write_markdown_report(scan_result: ScanResult, output_path: str) -> None:
                     "",
                     "**Evidence**",
                     "",
-                    _code_block(finding["response_excerpt"]),
+                    _code_block(_finding_evidence(finding)),
                     "",
                     f"Recommendation: {finding['recommendation']}",
                     "",

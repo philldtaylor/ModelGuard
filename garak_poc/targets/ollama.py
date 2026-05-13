@@ -45,7 +45,8 @@ class OllamaTarget(BaseTarget):
             response.raise_for_status()
             data = response.json()
         except requests.RequestException as exc:
-            return TargetResponse(text="", raw=None, latency_ms=None, token_usage=None, error=str(exc))
+            latency_ms = int((perf_counter() - start) * 1000)
+            return TargetResponse(text="", raw=None, latency_ms=latency_ms, token_usage=None, error=str(exc))
         latency_ms = int((perf_counter() - start) * 1000)
         return TargetResponse(
             text=str(data.get("response", "")),
