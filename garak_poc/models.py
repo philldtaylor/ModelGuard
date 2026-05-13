@@ -18,6 +18,7 @@ class ScanConfig:
     probe_limit: int | None
     output_markdown: str
     output_json: str
+    output_html: str
     generation: dict[str, Any]
     thresholds: dict[str, Any]
     reporting: dict[str, Any]
@@ -89,6 +90,9 @@ class ScanResult:
     scan_id: str
     started_at: str
     completed_at: str
+    started_at_local: str
+    completed_at_local: str
+    elapsed_seconds: float
     scanner: str
     scanner_version: str
     target: dict[str, Any]
@@ -105,6 +109,9 @@ class ScanResult:
                 "scanner_version": self.scanner_version,
                 "started_at": self.started_at,
                 "completed_at": self.completed_at,
+                "started_at_local": self.started_at_local,
+                "completed_at_local": self.completed_at_local,
+                "elapsed_seconds": self.elapsed_seconds,
             },
             "target": self.target,
             "config": self.config,

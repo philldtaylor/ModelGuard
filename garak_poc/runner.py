@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+from datetime import datetime
 from pathlib import Path
 from time import perf_counter
 
@@ -8,7 +9,8 @@ from garak_poc import __version__
 from garak_poc.detectors import build_detector_registry
 from garak_poc.models import ScanConfig, ScanResult, ScanSummary, utc_now_iso
 from garak_poc.probes import resolve_probes
-from garak_poc.reporting import write_json_report, write_markdown_report
+from garak_poc.reporting import write_html_report, write_json_report, write_markdown_report
+from garak_poc.reporting.common import format_elapsed_seconds
 from garak_poc.scoring import exceeds_threshold, score_probe, summarize_results
 from garak_poc.targets import OllamaTarget
 
@@ -91,10 +93,19 @@ def _print_scan_summary(scan_result: ScanResult, config: ScanConfig, elapsed_sec
     print("Scan complete")
     print(f"  Markdown report: {config.output_markdown}")
     print(f"  JSON report: {config.output_json}")
+    print(f"  HTML report: {config.output_html}")
+    print(f"  Started (UTC): {scan_result.started_at}")
+    print(f"  Completed (UTC): {scan_result.completed_at}")
+    print(f"  Started (Local): {scan_result.started_at_local}")
+    print(f"  Completed (Local): {scan_result.completed_at_local}")
     print(f"  Total probes: {summary.total_probes}")
     print(f"  PASS/WARN/FAIL/ERROR: {summary.passed}/{summary.warned}/{summary.failed}/{summary.errors}")
     print(f"  Highest severity: {summary.highest_severity}")
-    print(f"  Elapsed time: {elapsed_seconds:.2f}s")
+    print(f"  Elapsed time: {format_elapsed_seconds(elapsed_seconds)}s")
+
+
+def _local_now_iso() -> str:
+    return datetime.now().astimezone().replace(microsecond=0).isoformat()
 
 
 def _build_target(config: ScanConfig) -> OllamaTarget:
@@ -122,6 +133,7 @@ def _apply_redaction(scan_result: ScanResult, evidence_mode: str) -> ScanResult:
 
 def run_scan(config: ScanConfig) -> int:
     started_at = utc_now_iso()
+    started_at_local = _local_now_iso()
     started_perf = perf_counter()
     target = _build_target(config)
     if not target.healthcheck():
@@ -152,10 +164,16 @@ def run_scan(config: ScanConfig) -> int:
 
     summary = ScanSummary(**summarize_results(results))
     scan_id = f"{started_at.replace(':', '-').replace('.', '-')}-{config.model.replace(':', '-')}"
+    completed_at = utc_now_iso()
+    completed_at_local = _local_now_iso()
+    elapsed_seconds = perf_counter() - started_perf
     scan_result = ScanResult(
         scan_id=scan_id,
         started_at=started_at,
-        completed_at=utc_now_iso(),
+        completed_at=completed_at,
+        started_at_local=started_at_local,
+        completed_at_local=completed_at_local,
+        elapsed_seconds=elapsed_seconds,
         scanner="garak_poc",
         scanner_version=__version__,
         target=target.metadata(),
@@ -176,7 +194,7 @@ def run_scan(config: ScanConfig) -> int:
     Path(config.output_markdown).parent.mkdir(parents=True, exist_ok=True)
     write_json_report(scan_result, config.output_json)
     write_markdown_report(scan_result, config.output_markdown)
-    elapsed_seconds = perf_counter() - started_perf
+    write_html_report(scan_result, config.output_html)
     _print_scan_summary(scan_result, config, elapsed_seconds)
 
     if summary.errors > config.thresholds["max_errors"]:

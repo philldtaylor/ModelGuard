@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from garak_poc.models import ScanResult
+from garak_poc.reporting.common import format_elapsed_seconds, format_latency_ms
 
 
 def _code_block(text: str) -> str:
@@ -39,6 +40,9 @@ def write_markdown_report(scan_result: ScanResult, output_path: str) -> None:
         f"- Scanner: `{scan_result.scanner}` `{scan_result.scanner_version}`",
         f"- Started: `{scan_result.started_at}`",
         f"- Completed: `{scan_result.completed_at}`",
+        f"- Started (local): `{scan_result.started_at_local}`",
+        f"- Completed (local): `{scan_result.completed_at_local}`",
+        f"- Elapsed seconds: `{format_elapsed_seconds(scan_result.elapsed_seconds)}`",
         f"- Total probes: `{scan_result.summary.total_probes}`",
         f"- PASS/WARN/FAIL/ERROR: `{scan_result.summary.passed}/{scan_result.summary.warned}/{scan_result.summary.failed}/{scan_result.summary.errors}`",
         f"- Highest severity: `{scan_result.summary.highest_severity}`",
@@ -80,18 +84,24 @@ def write_markdown_report(scan_result: ScanResult, output_path: str) -> None:
         [
             "## Full Probe Results",
             "",
-            "| Probe | Category | Status | Severity |",
-            "| --- | --- | --- | --- |",
+            "| Probe | Category | Status | Severity | Latency |",
+            "| --- | --- | --- | --- | --- |",
         ]
     )
     for result in scan_result.results:
-        lines.append(f"| `{result.probe_id}` | `{result.category}` | `{result.status}` | `{result.severity}` |")
+        lines.append(
+            f"| `{result.probe_id}` | `{result.category}` | `{result.status}` | `{result.severity}` | `{format_latency_ms(result.response.latency_ms)}` |"
+        )
     lines.append("")
 
     for result in scan_result.results:
         lines.extend(
             [
                 f"### {result.probe_id}",
+                "",
+                f"- Status: `{result.status}`",
+                f"- Severity: `{result.severity}`",
+                f"- Latency: `{format_latency_ms(result.response.latency_ms)}`",
                 "",
                 f"Prompt:\n{_code_block(result.prompt)}",
                 "",

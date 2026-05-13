@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -8,6 +10,8 @@ import yaml
 from garak_poc.models import ScanConfig
 
 DEFAULT_CONFIG_PATH = "configs/local-ollama.yaml"
+TIMESTAMP_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_")
+SAFE_FILENAME_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
 
 
 class ConfigError(ValueError):
@@ -27,14 +31,31 @@ def _load_yaml(path: str | None) -> dict[str, Any]:
     return data
 
 
-def _derive_outputs(out_path: str | None, output_dir: str, model: str) -> tuple[str, str]:
+def _local_filename_timestamp() -> str:
+    return datetime.now().astimezone().strftime("%Y-%m-%d_%H-%M-%S")
+
+
+def _sanitize_filename_component(value: str, fallback: str) -> str:
+    sanitized = SAFE_FILENAME_CHARS.sub("-", value.strip())
+    sanitized = re.sub(r"-{2,}", "-", sanitized).strip("._-")
+    return sanitized or fallback
+
+
+def _derive_outputs(out_path: str | None, output_dir: str, model: str) -> tuple[str, str, str]:
+    timestamp = _local_filename_timestamp()
     if out_path:
-        markdown = Path(out_path)
+        requested_path = Path(out_path)
+        base_name = requested_path.stem if requested_path.suffix else requested_path.name
+        safe_base_name = _sanitize_filename_component(base_name, "report")
+        if not TIMESTAMP_PATTERN.match(safe_base_name):
+            safe_base_name = f"{timestamp}_{safe_base_name}"
+        markdown = requested_path.with_name(f"{safe_base_name}.md")
     else:
-        safe_model = model.replace(":", "-").replace("/", "-")
-        markdown = Path(output_dir) / f"{safe_model}.md"
+        safe_model = _sanitize_filename_component(model, "model")
+        markdown = Path(output_dir) / f"{timestamp}_{safe_model}.md"
     json_path = markdown.with_suffix(".json")
-    return str(markdown), str(json_path)
+    html_path = markdown.with_suffix(".html")
+    return str(markdown), str(json_path), str(html_path)
 
 
 def _expand_probe_groups(items: list[str]) -> list[str]:
@@ -74,7 +95,7 @@ def load_scan_config(args: Any) -> ScanConfig:
         raise ConfigError("Probe limit must be greater than 0")
 
     output_dir = reporting_cfg.get("output_dir", "reports")
-    markdown_path, json_path = _derive_outputs(args.out, output_dir, model)
+    markdown_path, json_path, html_path = _derive_outputs(args.out, output_dir, model)
     fail_on = (args.fail_on or threshold_cfg.get("fail_on", "high")).lower()
     evidence = reporting_cfg.get("evidence", "redacted")
     if evidence not in {"redacted", "summary", "full"}:
@@ -108,6 +129,7 @@ def load_scan_config(args: Any) -> ScanConfig:
         probe_limit=probe_limit,
         output_markdown=markdown_path,
         output_json=json_path,
+        output_html=html_path,
         generation=generation,
         thresholds=thresholds,
         reporting=reporting,
