@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import asdict
 from datetime import datetime
 from pathlib import Path
 from time import perf_counter
 
 from garak_poc import __version__
 from garak_poc.detectors import build_detector_registry
+from garak_poc.findings import build_finding
 from garak_poc.models import ScanConfig, ScanResult, ScanSummary, utc_now_iso
 from garak_poc.probes import resolve_probes
 from garak_poc.reporting import write_html_report, write_json_report, write_markdown_report
@@ -48,33 +48,9 @@ def _build_findings(results):
     for result in results:
         if result.status == "PASS":
             continue
-        confidence = max((detector.confidence for detector in result.detector_results), default=0.0)
-        findings.append(
-            {
-                "id": f"FIND-{finding_index:04d}",
-                "probe_id": result.probe_id,
-                "category": result.category,
-                "status": result.status,
-                "severity": result.severity,
-                "confidence": round(confidence, 2),
-                "title": result.title,
-                "prompt": result.prompt,
-                "response_excerpt": _build_response_excerpt(result.response.text, result.response.error),
-                "detectors": [asdict(detector) for detector in result.detector_results],
-                "recommendation": result.recommendation,
-            }
-        )
+        findings.append(build_finding(result, finding_index))
         finding_index += 1
     return findings
-
-
-def _build_response_excerpt(response_text: str, response_error: str | None) -> str:
-    excerpt = response_text.strip()[:800]
-    if excerpt:
-        return excerpt
-    if response_error:
-        return f"Target error: {response_error}"
-    return ""
 
 
 def _print_probe_start(index: int, total: int, probe_id: str, probe_name: str) -> None:
@@ -120,6 +96,7 @@ def _apply_redaction(scan_result: ScanResult, evidence_mode: str) -> ScanResult:
     for finding in scan_result.findings:
         finding["prompt"] = redact_text(finding["prompt"])
         finding["response_excerpt"] = redact_text(finding["response_excerpt"])
+        finding["primary_evidence"] = redact_text(str(finding.get("primary_evidence", "")))
         for detector in finding["detectors"]:
             detector["evidence"] = redact_text(detector["evidence"])
     for result in scan_result.results:

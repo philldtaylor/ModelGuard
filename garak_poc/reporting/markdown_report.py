@@ -11,21 +11,16 @@ def _code_block(text: str) -> str:
 
 
 def _finding_rationale(finding: dict[str, object]) -> str:
-    for detector in finding.get("detectors", []):
-        rationale = str(detector.get("rationale", "")).strip()
-        if rationale:
-            return rationale
-    return ""
+    return str(finding.get("primary_rationale", "")).strip()
 
 
 def _finding_evidence(finding: dict[str, object]) -> str:
-    for detector in finding.get("detectors", []):
-        rationale = str(detector.get("rationale", "")).strip()
-        if rationale:
-            return rationale
-        evidence = str(detector.get("evidence", "")).strip()
-        if evidence:
-            return evidence
+    evidence = str(finding.get("primary_evidence", "")).strip()
+    if evidence:
+        return evidence
+    rationale = _finding_rationale(finding)
+    if rationale:
+        return rationale
     excerpt = str(finding.get("response_excerpt", "")).strip()
     if excerpt:
         return excerpt
@@ -78,10 +73,11 @@ def write_markdown_report(scan_result: ScanResult, output_path: str) -> None:
                     f"- Category: `{finding['category']}`",
                     f"- Probe ID: `{finding['probe_id']}`",
                     f"- Confidence: `{finding['confidence']}`",
+                    f"- Primary Detector: `{finding.get('primary_detector_id', '') or 'None'}`",
                     "",
-                    f"Rationale: {_finding_rationale(finding) or 'No detector rationale recorded.'}",
+                    f"Primary Rationale: {_finding_rationale(finding) or 'No detector rationale recorded.'}",
                     "",
-                    "**Evidence**",
+                    "**Primary Evidence**",
                     "",
                     _code_block(_finding_evidence(finding)),
                     "",

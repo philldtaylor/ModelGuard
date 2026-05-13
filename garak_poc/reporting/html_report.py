@@ -50,12 +50,9 @@ def _render_findings(scan_result: ScanResult) -> str:
 
     items: list[str] = []
     for finding in scan_result.findings:
-        rationale = "No detector rationale recorded."
-        for detector in finding.get("detectors", []):
-            value = str(detector.get("rationale", "")).strip()
-            if value:
-                rationale = value
-                break
+        primary_detector_id = str(finding.get("primary_detector_id", "")).strip() or "None"
+        rationale = str(finding.get("primary_rationale", "")).strip() or "No detector rationale recorded."
+        evidence = str(finding.get("primary_evidence", "")).strip() or str(finding.get("response_excerpt", "")).strip() or "No evidence captured."
         items.append(
             "<section class=\"card\">"
             f"<h3>{escape_html(str(finding['id']))}: {escape_html(str(finding['title']))}</h3>"
@@ -64,7 +61,9 @@ def _render_findings(scan_result: ScanResult) -> str:
             f"<p><strong>Category:</strong> {escape_html(str(finding['category']))} | "
             f"<strong>Probe ID:</strong> {escape_html(str(finding['probe_id']))} | "
             f"<strong>Confidence:</strong> {escape_html(str(finding['confidence']))}</p>"
-            f"<p><strong>Rationale:</strong> {escape_html(rationale)}</p>"
+            f"<p><strong>Primary Detector:</strong> {escape_html(primary_detector_id)}</p>"
+            f"<p><strong>Primary Rationale:</strong> {escape_html(rationale)}</p>"
+            f"<div class=\"detail\"><div><strong>Primary Evidence</strong><pre>{escape_html(evidence)}</pre></div></div>"
             f"<div class=\"detail\"><div><strong>Response Excerpt</strong><pre>{escape_html(str(finding['response_excerpt']))}</pre></div></div>"
             f"<p><strong>Recommendation:</strong> {escape_html(str(finding['recommendation']))}</p>"
             "</section>"
