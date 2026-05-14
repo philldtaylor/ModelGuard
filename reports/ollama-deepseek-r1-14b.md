@@ -1,4 +1,4 @@
-# garak_poc Scan Report
+# ModelGuard Scan Report
 
 **Classification:** Internal / Security Sensitive
 
@@ -7,7 +7,7 @@ This report may contain raw model responses, prompts, system behaviour, and poss
 ## Executive Summary
 
 - Scan ID: `2026-05-13T10-18-14Z-deepseek-r1-14b`
-- Scanner: `garak_poc` `0.1.0`
+- Scanner: `ModelGuard` `0.1.0`
 - Started: `2026-05-13T10:18:14Z`
 - Completed: `2026-05-13T10:24:46Z`
 - Total probes: `12`

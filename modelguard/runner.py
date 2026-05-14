@@ -1,0 +1,179 @@
+from __future__ import annotations
+
+from datetime import datetime
+from pathlib import Path
+from time import perf_counter
+
+from modelguard import __version__
+from modelguard.detectors import build_detector_registry
+from modelguard.findings import build_finding
+from modelguard.models import ScanConfig, ScanResult, ScanSummary, utc_now_iso
+from modelguard.probes import resolve_probes
+from modelguard.reporting import write_html_report, write_json_report, write_markdown_report
+from modelguard.reporting.common import format_elapsed_seconds
+from modelguard.scoring import exceeds_threshold, score_probe, summarize_results
+from modelguard.targets import OllamaTarget
+
+
+class TargetConnectionError(RuntimeError):
+    pass
+
+
+SECRET_REPLACEMENTS = [
+    (
+        __import__("re").compile(r"(sk-[A-Za-z0-9]{10,}|AKIA[0-9A-Z]{16}|BEGIN [A-Z ]*PRIVATE KEY)", __import__("re").IGNORECASE),
+        "[REDACTED_SECRET]",
+    ),
+    (
+        __import__("re").compile(r"(bearer\s+)([A-Za-z0-9._-]{10,})", __import__("re").IGNORECASE),
+        r"\1[REDACTED_TOKEN]",
+    ),
+    (
+        __import__("re").compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", __import__("re").IGNORECASE),
+        "[REDACTED_EMAIL]",
+    ),
+]
+
+
+def redact_text(text: str) -> str:
+    redacted = text
+    for pattern, replacement in SECRET_REPLACEMENTS:
+        redacted = pattern.sub(replacement, redacted)
+    return redacted
+
+
+def _build_findings(results):
+    findings = []
+    finding_index = 1
+    for result in results:
+        if result.status == "PASS":
+            continue
+        findings.append(build_finding(result, finding_index))
+        finding_index += 1
+    return findings
+
+
+def _print_probe_start(index: int, total: int, probe_id: str, probe_name: str) -> None:
+    print(f"[{index}/{total}] Running {probe_id} - {probe_name}")
+
+
+def _print_probe_complete(index: int, total: int, result) -> None:
+    latency = result.response.latency_ms
+    latency_text = f"{latency}ms" if latency is not None else "n/a"
+    print(f"[{index}/{total}] Completed {result.probe_id} - {result.status} ({result.severity}, {latency_text})")
+
+
+def _print_scan_summary(scan_result: ScanResult, config: ScanConfig, elapsed_seconds: float) -> None:
+    summary = scan_result.summary
+    print("")
+    print("Scan complete")
+    print(f"  Markdown report: {config.output_markdown}")
+    print(f"  JSON report: {config.output_json}")
+    print(f"  HTML report: {config.output_html}")
+    print(f"  Started (UTC): {scan_result.started_at}")
+    print(f"  Completed (UTC): {scan_result.completed_at}")
+    print(f"  Started (Local): {scan_result.started_at_local}")
+    print(f"  Completed (Local): {scan_result.completed_at_local}")
+    print(f"  Total probes: {summary.total_probes}")
+    print(f"  PASS/WARN/FAIL/ERROR: {summary.passed}/{summary.warned}/{summary.failed}/{summary.errors}")
+    print(f"  Highest severity: {summary.highest_severity}")
+    print(f"  Elapsed time: {format_elapsed_seconds(elapsed_seconds)}s")
+
+
+def _local_now_iso() -> str:
+    return datetime.now().astimezone().replace(microsecond=0).isoformat()
+
+
+def _build_target(config: ScanConfig) -> OllamaTarget:
+    if config.target_type == "ollama":
+        return OllamaTarget(config)
+    raise TargetConnectionError(f"Unsupported target type: {config.target_type}")
+
+
+def _apply_redaction(scan_result: ScanResult, evidence_mode: str) -> ScanResult:
+    if evidence_mode == "full":
+        return scan_result
+    for finding in scan_result.findings:
+        finding["prompt"] = redact_text(finding["prompt"])
+        finding["response_excerpt"] = redact_text(finding["response_excerpt"])
+        finding["primary_evidence"] = redact_text(str(finding.get("primary_evidence", "")))
+        for detector in finding["detectors"]:
+            detector["evidence"] = redact_text(detector["evidence"])
+    for result in scan_result.results:
+        if evidence_mode in {"redacted", "summary"}:
+            result.prompt = redact_text(result.prompt)
+            result.response.text = redact_text(result.response.text)
+            for detector in result.detector_results:
+                detector.evidence = redact_text(detector.evidence)
+    return scan_result
+
+
+def run_scan(config: ScanConfig) -> int:
+    started_at = utc_now_iso()
+    started_at_local = _local_now_iso()
+    started_perf = perf_counter()
+    target = _build_target(config)
+    if not target.healthcheck():
+        raise TargetConnectionError(f"Healthcheck failed for {config.base_url}")
+
+    probes = resolve_probes(config.probes)
+    if config.probe_limit is not None:
+        probes = probes[: config.probe_limit]
+    if len(probes) > config.limits["max_probes"]:
+        raise RuntimeError("Configured probe set exceeds max_probes limit")
+
+    detector_registry = build_detector_registry()
+    results = []
+    total_probes = len(probes)
+    for index, probe in enumerate(probes, start=1):
+        _print_probe_start(index, total_probes, probe.id, probe.name)
+        response = target.generate(probe.prompt)
+        detector_results = []
+        if response.error:
+            detector_results = []
+        else:
+            for detector_id in probe.detectors:
+                detector = detector_registry[detector_id]
+                detector_results.append(detector.evaluate(probe.prompt, response.text))
+        result = score_probe(probe, response, detector_results)
+        results.append(result)
+        _print_probe_complete(index, total_probes, result)
+
+    summary = ScanSummary(**summarize_results(results))
+    scan_id = f"{started_at.replace(':', '-').replace('.', '-')}-{config.model.replace(':', '-')}"
+    completed_at = utc_now_iso()
+    completed_at_local = _local_now_iso()
+    elapsed_seconds = perf_counter() - started_perf
+    scan_result = ScanResult(
+        scan_id=scan_id,
+        started_at=started_at,
+        completed_at=completed_at,
+        started_at_local=started_at_local,
+        completed_at_local=completed_at_local,
+        elapsed_seconds=elapsed_seconds,
+        scanner="ModelGuard",
+        scanner_version=__version__,
+        target=target.metadata(),
+        config={
+            "name": config.scan_name,
+            "description": config.description,
+            "probes": config.probes,
+            "thresholds": config.thresholds,
+            "generation": config.generation,
+            "reporting": config.reporting,
+        },
+        summary=summary,
+        findings=_build_findings(results),
+        results=results,
+    )
+    scan_result = _apply_redaction(scan_result, config.reporting["evidence"])
+
+    Path(config.output_markdown).parent.mkdir(parents=True, exist_ok=True)
+    write_json_report(scan_result, config.output_json)
+    write_markdown_report(scan_result, config.output_markdown)
+    write_html_report(scan_result, config.output_html)
+    _print_scan_summary(scan_result, config, elapsed_seconds)
+
+    if summary.errors > config.thresholds["max_errors"]:
+        return 4
+    return 1 if exceeds_threshold(results, config.thresholds["fail_on"]) else 0

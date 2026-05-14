@@ -1,4 +1,4 @@
-Improve garak_poc report file naming.
+Improve ModelGuard report file naming.
 
 Implement timestamped report filenames.
 

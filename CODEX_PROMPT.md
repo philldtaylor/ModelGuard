@@ -1,4 +1,4 @@
-Build garak_poc v0.1: a lightweight Python AI vulnerability scanner inspired by garak.
+Build ModelGuard v0.1: a lightweight Python AI vulnerability scanner inspired by garak.
 
 Implement the architecture from the project docs:
 
@@ -25,7 +25,7 @@ Use Python 3.11+.
 Preferred structure:
 
 scanner.py
-garak_poc/
+modelguard/
   __init__.py
   cli.py
   config.py

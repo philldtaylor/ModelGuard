@@ -1,4 +1,4 @@
-Improve garak_poc reporting.
+Improve ModelGuard reporting.
 
 Implement:
 1. HTML report output alongside Markdown and JSON.

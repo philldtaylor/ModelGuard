@@ -1,4 +1,4 @@
-Improve garak_poc detector scoring to reduce obvious false positives.
+Improve ModelGuard detector scoring to reduce obvious false positives.
 
 Problem:
 The current keyword detectors over-alert when a model safely refuses but mentions risky terms such as "system prompt", "hidden prompt", "API key", or "secret".

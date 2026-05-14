@@ -1,4 +1,4 @@
-# garak_poc v0.1 Validation Notes
+# ModelGuard v0.1 Validation Notes
 
 ## Target
 

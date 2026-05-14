@@ -1,4 +1,4 @@
-Improve garak_poc CLI usability by implementing a polished help interface.
+Improve ModelGuard CLI usability by implementing a polished help interface.
 
 Requirements:
 

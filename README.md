@@ -1,6 +1,6 @@
-# garak_poc v0.1
+# ModelGuard v0.1
 
-`garak_poc` is a lightweight Python AI vulnerability scanner inspired by garak. It runs a small, safe probe set against a target model, evaluates responses with simple detectors, and writes redacted JSON and Markdown reports.
+`ModelGuard` is a lightweight Python AI vulnerability scanner. Inspired by NVIDIA garak. It runs a small, safe probe set against a target model, evaluates responses with simple detectors, and writes redacted JSON and Markdown reports.
 
 ## Authorised Use Only
 
@@ -64,7 +64,7 @@ The static v0.1 registry contains 12 safe probes across:
 
 ```text
 scanner.py
-garak_poc/
+modelguard/
 configs/
 reports/
 tests/

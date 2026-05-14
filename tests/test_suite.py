@@ -8,17 +8,22 @@ import unittest
 from contextlib import redirect_stdout
 from unittest.mock import patch
 
-from garak_poc import __version__
-from garak_poc.cli import build_parser
-from garak_poc.config import load_scan_config
-from garak_poc.detectors import build_detector_registry
-from garak_poc.findings import build_finding
-from garak_poc.models import DetectorResult, Probe, ScanConfig, ScanResult, ScanSummary, TargetResponse
-from garak_poc.reporting.html_report import write_html_report
-from garak_poc.probes.registry import resolve_probes
-from garak_poc.reporting.markdown_report import write_markdown_report
-from garak_poc.runner import redact_text, run_scan
-from garak_poc.scoring import score_probe
+from modelguard import __version__
+from modelguard.cli import build_parser, main
+from modelguard.config import load_scan_config
+from modelguard.detectors import build_detector_registry
+from modelguard.findings import build_finding
+from modelguard.models import DetectorResult, Probe, ScanConfig, ScanResult, ScanSummary, TargetResponse
+from modelguard.reporting.comparison_report import (
+    build_comparison_summary,
+    load_scan_reports,
+    write_comparison_report,
+)
+from modelguard.reporting.html_report import write_html_report
+from modelguard.probes.registry import resolve_probes
+from modelguard.reporting.markdown_report import write_markdown_report
+from modelguard.runner import redact_text, run_scan
+from modelguard.scoring import score_probe
 
 
 class ConfigTests(unittest.TestCase):
@@ -33,7 +38,7 @@ class ConfigTests(unittest.TestCase):
             out="reports/sample.md",
             fail_on=None,
         )
-        with patch("garak_poc.config._local_filename_timestamp", return_value="2026-05-13_11-49-41"):
+        with patch("modelguard.config._local_filename_timestamp", return_value="2026-05-13_11-49-41"):
             config = load_scan_config(args)
         self.assertEqual(config.output_markdown, "reports/2026-05-13_11-49-41_sample.md")
         self.assertEqual(config.output_json, "reports/2026-05-13_11-49-41_sample.json")
@@ -51,7 +56,7 @@ class ConfigTests(unittest.TestCase):
             out="reports/sample.json",
             fail_on=None,
         )
-        with patch("garak_poc.config._local_filename_timestamp", return_value="2026-05-13_11-49-41"):
+        with patch("modelguard.config._local_filename_timestamp", return_value="2026-05-13_11-49-41"):
             config = load_scan_config(args)
         self.assertEqual(config.output_markdown, "reports/2026-05-13_11-49-41_sample.md")
         self.assertEqual(config.output_json, "reports/2026-05-13_11-49-41_sample.json")
@@ -68,7 +73,7 @@ class ConfigTests(unittest.TestCase):
             out="reports/2026-05-13_11-49-41_sample.md",
             fail_on=None,
         )
-        with patch("garak_poc.config._local_filename_timestamp", return_value="2026-05-13_11-49-42"):
+        with patch("modelguard.config._local_filename_timestamp", return_value="2026-05-13_11-49-42"):
             config = load_scan_config(args)
         self.assertEqual(config.output_markdown, "reports/2026-05-13_11-49-41_sample.md")
         self.assertEqual(config.output_json, "reports/2026-05-13_11-49-41_sample.json")
@@ -85,7 +90,7 @@ class ConfigTests(unittest.TestCase):
             out=None,
             fail_on=None,
         )
-        with patch("garak_poc.config._local_filename_timestamp", return_value="2026-05-13_11-49-41"):
+        with patch("modelguard.config._local_filename_timestamp", return_value="2026-05-13_11-49-41"):
             config = load_scan_config(args)
         self.assertEqual(config.output_markdown, "reports/2026-05-13_11-49-41_deepseek-r1-14b.md")
         self.assertEqual(config.output_json, "reports/2026-05-13_11-49-41_deepseek-r1-14b.json")
@@ -117,7 +122,8 @@ class ConfigTests(unittest.TestCase):
 
         self.assertEqual(exc.exception.code, 0)
         output = stdout.getvalue()
-        self.assertIn("garak_poc is a lightweight Python AI vulnerability scanner", output)
+        self.assertIn("ModelGuard is a lightweight Python AI vulnerability scanner.", output)
+        self.assertIn("Inspired by NVIDIA garak.", output)
         self.assertIn("Authorised use only:", output)
         self.assertIn("Target Selection:", output)
         self.assertIn("Scan Behavior:", output)
@@ -149,7 +155,7 @@ class ConfigTests(unittest.TestCase):
             parser.parse_args(["--version"])
 
         self.assertEqual(exc.exception.code, 0)
-        self.assertEqual(stdout.getvalue().strip(), f"garak_poc {__version__}")
+        self.assertEqual(stdout.getvalue().strip(), f"ModelGuard {__version__}")
 
     def test_cli_invalid_argument_returns_argparse_error(self):
         parser = build_parser()
@@ -426,7 +432,7 @@ class RunnerTests(unittest.TestCase):
                 limits={"max_probes": 50, "requests_per_minute": 30, "max_cost_usd": 0},
             )
 
-            with patch("garak_poc.runner.OllamaTarget", FakeTarget):
+            with patch("modelguard.runner.OllamaTarget", FakeTarget):
                 stdout = io.StringIO()
                 with redirect_stdout(stdout):
                     exit_code = run_scan(config)
@@ -482,7 +488,7 @@ class RunnerTests(unittest.TestCase):
             started_at_local="2026-01-01T00:00:00+00:00",
             completed_at_local="2026-01-01T00:00:01+00:00",
             elapsed_seconds=1.0,
-            scanner="garak_poc",
+            scanner="ModelGuard",
             scanner_version="0.1.1",
             target={"type": "ollama", "model": "m", "base_url": "http://localhost", "generation": {}},
             summary=SimpleNamespace(
@@ -536,7 +542,7 @@ class RunnerTests(unittest.TestCase):
             started_at_local="2026-01-01T00:00:00+00:00",
             completed_at_local="2026-01-01T00:00:01+00:00",
             elapsed_seconds=1.0,
-            scanner="garak_poc",
+            scanner="ModelGuard",
             scanner_version="0.1.1",
             target={"type": "ollama", "model": "m", "base_url": "http://localhost", "generation": {}},
             config={},
@@ -613,7 +619,7 @@ class RunnerTests(unittest.TestCase):
             started_at_local="2026-01-01T00:00:00+00:00",
             completed_at_local="2026-01-01T00:00:01+00:00",
             elapsed_seconds=1.0,
-            scanner="garak_poc",
+            scanner="ModelGuard",
             scanner_version="0.1.1",
             target={"type": "ollama", "model": "m", "base_url": "http://localhost", "generation": {}},
             config={},
@@ -655,6 +661,342 @@ class RunnerTests(unittest.TestCase):
         self.assertIn("Primary Detector:</strong> prompt_leak_keyword", html)
         self.assertIn("Primary Rationale:</strong> Response mentions hidden prompt material", html)
         self.assertIn("Primary Evidence</strong><pre>Matched keyword: system prompt</pre>", html)
+
+
+class ComparisonReportTests(unittest.TestCase):
+    def _write_report(
+        self,
+        directory: Path,
+        filename: str,
+        model: str,
+        target_type: str,
+        started_at: str,
+        completed_at: str,
+        elapsed_seconds: float,
+        counts: dict[str, int],
+        highest_severity: str,
+        probe_rows: list[dict[str, object]],
+    ) -> Path:
+        payload = {
+            "scan": {
+                "id": f"scan-{model}",
+                "scanner": "ModelGuard",
+                "scanner_version": "0.1.0",
+                "started_at": started_at,
+                "completed_at": completed_at,
+                "started_at_local": started_at,
+                "completed_at_local": completed_at,
+                "elapsed_seconds": elapsed_seconds,
+            },
+            "target": {
+                "type": target_type,
+                "model": model,
+                "base_url": "http://localhost:11434",
+                "generation": {},
+            },
+            "config": {},
+            "summary": {
+                "total_probes": len(probe_rows),
+                "passed": counts["PASS"],
+                "warned": counts["WARN"],
+                "failed": counts["FAIL"],
+                "errors": counts["ERROR"],
+                "highest_severity": highest_severity,
+            },
+            "findings": [],
+            "results": [
+                {
+                    "probe_id": row["probe_id"],
+                    "probe_name": row.get("probe_name", row["probe_id"]),
+                    "category": row["category"],
+                    "prompt": "prompt",
+                    "response": {
+                        "text": "response",
+                        "raw": {},
+                        "latency_ms": row["latency_ms"],
+                        "token_usage": None,
+                        "error": None,
+                    },
+                    "detector_results": [],
+                    "status": row["status"],
+                    "severity": row["severity"],
+                    "title": row.get("probe_name", row["probe_id"]),
+                    "recommendation": "recommendation",
+                }
+                for row in probe_rows
+            ],
+        }
+        output_path = directory / filename
+        output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+        return output_path
+
+    def test_loading_multiple_json_reports(self):
+        with TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            first = self._write_report(
+                temp_path,
+                "first.json",
+                "model-a",
+                "ollama",
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:10Z",
+                10.0,
+                {"PASS": 1, "WARN": 1, "FAIL": 0, "ERROR": 0},
+                "Medium",
+                [
+                    {"probe_id": "probe-1", "category": "jailbreak", "status": "PASS", "severity": "High", "latency_ms": 100},
+                    {"probe_id": "probe-2", "category": "prompt_injection", "status": "WARN", "severity": "Medium", "latency_ms": 200},
+                ],
+            )
+            second = self._write_report(
+                temp_path,
+                "second.json",
+                "model-b",
+                "ollama",
+                "2026-05-14T11:00:00Z",
+                "2026-05-14T11:00:20Z",
+                20.0,
+                {"PASS": 0, "WARN": 1, "FAIL": 1, "ERROR": 0},
+                "High",
+                [
+                    {"probe_id": "probe-1", "category": "jailbreak", "status": "FAIL", "severity": "High", "latency_ms": 150},
+                    {"probe_id": "probe-2", "category": "prompt_injection", "status": "WARN", "severity": "Medium", "latency_ms": 250},
+                ],
+            )
+
+            reports = load_scan_reports([str(first), str(second)])
+
+        self.assertEqual(len(reports), 2)
+        self.assertEqual(reports[0]["filename"], "first.json")
+        self.assertEqual(reports[1]["model_name"], "model-b")
+        self.assertEqual(reports[0]["average_probe_latency_ms"], 150.0)
+
+    def test_summary_comparison_highlights_and_metadata(self):
+        reports = [
+            {
+                "filename": "first.json",
+                "model_name": "model-a",
+                "target_type": "ollama",
+                "started_at": "2026-05-14T10:00:00Z",
+                "completed_at": "2026-05-14T10:00:10Z",
+                "elapsed_seconds": 10.0,
+                "total_probes": 2,
+                "counts": {"PASS": 1, "WARN": 1, "FAIL": 0, "ERROR": 0},
+                "highest_severity": "Medium",
+                "average_probe_latency_ms": 150.0,
+                "results": [
+                    {"probe_id": "probe-1", "probe_name": "Probe 1", "category": "jailbreak", "status": "PASS", "severity": "High", "response": {"latency_ms": 100}},
+                    {"probe_id": "probe-2", "probe_name": "Probe 2", "category": "prompt_injection", "status": "WARN", "severity": "Medium", "response": {"latency_ms": 200}},
+                ],
+            },
+            {
+                "filename": "second.json",
+                "model_name": "model-b",
+                "target_type": "ollama",
+                "started_at": "2026-05-14T11:00:00Z",
+                "completed_at": "2026-05-14T11:00:20Z",
+                "elapsed_seconds": 20.0,
+                "total_probes": 2,
+                "counts": {"PASS": 1, "WARN": 0, "FAIL": 1, "ERROR": 0},
+                "highest_severity": "High",
+                "average_probe_latency_ms": 90.0,
+                "results": [
+                    {"probe_id": "probe-1", "probe_name": "Probe 1", "category": "jailbreak", "status": "PASS", "severity": "High", "response": {"latency_ms": 80}},
+                    {"probe_id": "probe-2", "probe_name": "Probe 2", "category": "prompt_injection", "status": "FAIL", "severity": "Medium", "response": {"latency_ms": 100}},
+                ],
+            },
+        ]
+
+        comparison = build_comparison_summary(reports)
+
+        self.assertEqual(comparison["report_filenames"], ["first.json", "second.json"])
+        self.assertEqual(comparison["highlights"]["fastest_model"], "model-b")
+        self.assertEqual(comparison["highlights"]["fewest_fail_model"], "model-a")
+        self.assertEqual(comparison["highlights"]["fewest_warn_fail_model"], "model-a")
+        self.assertEqual(comparison["reports"][0]["counts"]["WARN"], 1)
+
+    def test_differing_probe_outcomes_are_listed(self):
+        reports = [
+            {
+                "filename": "first.json",
+                "model_name": "model-a",
+                "target_type": "ollama",
+                "started_at": "2026-05-14T10:00:00Z",
+                "completed_at": "2026-05-14T10:00:10Z",
+                "elapsed_seconds": 10.0,
+                "total_probes": 2,
+                "counts": {"PASS": 2, "WARN": 0, "FAIL": 0, "ERROR": 0},
+                "highest_severity": "Info",
+                "average_probe_latency_ms": 100.0,
+                "results": [
+                    {"probe_id": "probe-1", "probe_name": "Probe 1", "category": "jailbreak", "status": "PASS", "severity": "High", "response": {"latency_ms": 90}},
+                    {"probe_id": "probe-2", "probe_name": "Probe 2", "category": "prompt_injection", "status": "PASS", "severity": "Medium", "response": {"latency_ms": 110}},
+                ],
+            },
+            {
+                "filename": "second.json",
+                "model_name": "model-b",
+                "target_type": "ollama",
+                "started_at": "2026-05-14T11:00:00Z",
+                "completed_at": "2026-05-14T11:00:20Z",
+                "elapsed_seconds": 20.0,
+                "total_probes": 2,
+                "counts": {"PASS": 1, "WARN": 1, "FAIL": 0, "ERROR": 0},
+                "highest_severity": "Medium",
+                "average_probe_latency_ms": 120.0,
+                "results": [
+                    {"probe_id": "probe-1", "probe_name": "Probe 1", "category": "jailbreak", "status": "WARN", "severity": "High", "response": {"latency_ms": 120}},
+                    {"probe_id": "probe-2", "probe_name": "Probe 2", "category": "prompt_injection", "status": "PASS", "severity": "Medium", "response": {"latency_ms": 120}},
+                ],
+            },
+        ]
+
+        comparison = build_comparison_summary(reports)
+
+        self.assertEqual(len(comparison["differing_probes"]), 1)
+        self.assertEqual(comparison["differing_probes"][0]["probe_id"], "probe-1")
+        self.assertEqual(comparison["differing_probes"][0]["by_model"]["model-b"]["status"], "WARN")
+
+    def test_html_output_creation(self):
+        comparison = {
+            "report_filenames": ["first.json", "second.json"],
+            "models": ["model-a", "model-b"],
+            "reports": [
+                {
+                    "filename": "first.json",
+                    "model_name": "model-a",
+                    "display_name": "model-a",
+                    "target_type": "ollama",
+                    "started_at": "2026-05-14T10:00:00Z",
+                    "completed_at": "2026-05-14T10:00:10Z",
+                    "elapsed_seconds": 10.0,
+                    "elapsed_seconds_text": "10.00",
+                    "total_probes": 1,
+                    "counts": {"PASS": 1, "WARN": 0, "FAIL": 0, "ERROR": 0},
+                    "highest_severity": "Info",
+                    "average_probe_latency_ms": 100.0,
+                    "average_probe_latency_text": "100.00ms",
+                },
+                {
+                    "filename": "second.json",
+                    "model_name": "model-b",
+                    "display_name": "model-b",
+                    "target_type": "ollama",
+                    "started_at": "2026-05-14T10:00:00Z",
+                    "completed_at": "2026-05-14T10:00:10Z",
+                    "elapsed_seconds": 11.0,
+                    "elapsed_seconds_text": "11.00",
+                    "total_probes": 1,
+                    "counts": {"PASS": 0, "WARN": 1, "FAIL": 0, "ERROR": 0},
+                    "highest_severity": "Medium",
+                    "average_probe_latency_ms": 120.0,
+                    "average_probe_latency_text": "120.00ms",
+                },
+            ],
+            "probe_results": [
+                {
+                    "probe_id": "probe-1",
+                    "probe_name": "Probe 1",
+                    "category": "jailbreak",
+                    "by_model": {
+                        "model-a": {"status": "PASS", "severity": "High", "latency_ms": 100, "latency_text": "100ms"},
+                        "model-b": {"status": "WARN", "severity": "High", "latency_ms": 120, "latency_text": "120ms"},
+                    },
+                }
+            ],
+            "differing_probes": [
+                {
+                    "probe_id": "probe-1",
+                    "probe_name": "Probe 1",
+                    "category": "jailbreak",
+                    "by_model": {
+                        "model-a": {"status": "PASS", "severity": "High", "latency_ms": 100, "latency_text": "100ms"},
+                        "model-b": {"status": "WARN", "severity": "High", "latency_ms": 120, "latency_text": "120ms"},
+                    },
+                }
+            ],
+            "highlights": {
+                "fastest_model": "model-a",
+                "fewest_fail_model": "model-a",
+                "fewest_warn_fail_model": "model-a",
+            },
+        }
+        with TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "comparison.html"
+            format_name = write_comparison_report(comparison, str(output_path))
+            content = output_path.read_text(encoding="utf-8")
+
+        self.assertEqual(format_name, "html")
+        self.assertIn("ModelGuard Model Comparison Report", content)
+        self.assertIn("Probe Results By Model", content)
+        self.assertIn("status-pass", content)
+
+    def test_safe_html_escaping(self):
+        reports = [
+            {
+                "filename": "evil<script>.json",
+                "model_name": "<script>alert(1)</script>",
+                "target_type": "ollama",
+                "started_at": "2026-05-14T10:00:00Z",
+                "completed_at": "2026-05-14T10:00:10Z",
+                "elapsed_seconds": 10.0,
+                "total_probes": 1,
+                "counts": {"PASS": 1, "WARN": 0, "FAIL": 0, "ERROR": 0},
+                "highest_severity": "Info",
+                "average_probe_latency_ms": 10.0,
+                "results": [
+                    {"probe_id": "probe-1", "probe_name": "Probe 1", "category": "<b>tag</b>", "status": "PASS", "severity": "High", "response": {"latency_ms": 10}},
+                ],
+            }
+        ]
+        comparison = build_comparison_summary(reports)
+
+        with TemporaryDirectory() as temp_dir:
+            output_path = Path(temp_dir) / "comparison.html"
+            write_comparison_report(comparison, str(output_path))
+            content = output_path.read_text(encoding="utf-8")
+
+        self.assertNotIn("<script>alert(1)</script>", content)
+        self.assertIn("&lt;script&gt;alert(1)&lt;/script&gt;", content)
+        self.assertIn("evil&lt;script&gt;.json", content)
+        self.assertIn("&lt;b&gt;tag&lt;/b&gt;", content)
+
+    def test_cli_compare_invocation(self):
+        with TemporaryDirectory() as temp_dir:
+            temp_path = Path(temp_dir)
+            first = self._write_report(
+                temp_path,
+                "first.json",
+                "model-a",
+                "ollama",
+                "2026-05-14T10:00:00Z",
+                "2026-05-14T10:00:10Z",
+                10.0,
+                {"PASS": 1, "WARN": 0, "FAIL": 0, "ERROR": 0},
+                "Info",
+                [{"probe_id": "probe-1", "category": "jailbreak", "status": "PASS", "severity": "High", "latency_ms": 100}],
+            )
+            second = self._write_report(
+                temp_path,
+                "second.json",
+                "model-b",
+                "ollama",
+                "2026-05-14T11:00:00Z",
+                "2026-05-14T11:00:10Z",
+                10.0,
+                {"PASS": 0, "WARN": 1, "FAIL": 0, "ERROR": 0},
+                "Medium",
+                [{"probe_id": "probe-1", "category": "jailbreak", "status": "WARN", "severity": "High", "latency_ms": 120}],
+            )
+            output_path = temp_path / "comparison.html"
+
+            stdout = io.StringIO()
+            with redirect_stdout(stdout):
+                exit_code = main(["compare", str(first), str(second), "--out", str(output_path)])
+
+            self.assertEqual(exit_code, 0)
+            self.assertTrue(output_path.exists())
+            self.assertIn("Comparison report (html):", stdout.getvalue())
 
 
 if __name__ == "__main__":

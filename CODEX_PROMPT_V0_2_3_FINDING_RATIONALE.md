@@ -1,4 +1,4 @@
-Improve garak_poc finding rationale selection.
+Improve ModelGuard finding rationale selection.
 
 Problem:
 Findings sometimes show a confusing rationale/evidence from a detector that did not actually cause the WARN/FAIL.
