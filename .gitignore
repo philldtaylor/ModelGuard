@@ -2,7 +2,11 @@
 __pycache__/
 *.py[cod]
 .pytest_cache/
+
 reports/*.json
 reports/*.md
+reports/*.html
 !reports/.gitkeep
 !reports/validation-notes.md
+!reports/examples/
+!reports/examples/*.html
