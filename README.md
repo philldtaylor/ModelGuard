@@ -167,10 +167,16 @@ HTML comparison report snippet:
 </table>
 ```
 
-Screenshot placeholders:
+## Screenshots
 
-- Scan report screenshot: `docs/screenshots/scan-report.png`
-- Model comparison screenshot: `docs/screenshots/model-comparison.png`
+### Scan Report
+
+![ModelGuard Scan Report](docs/screenshots/scan-report.png)
+
+### Model Comparison
+
+![ModelGuard Model Comparison](docs/screenshots/model-comparison.png)
+
 
 ## Model Comparison
 
