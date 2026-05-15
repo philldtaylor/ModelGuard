@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import shlex
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -9,7 +10,7 @@ import yaml
 
 from modelguard.models import ScanConfig
 
-DEFAULT_CONFIG_PATH = "configs/local-ollama.yaml"
+DEFAULT_CONFIG_PATH = "configs/local-ollama-garak.yaml"
 TIMESTAMP_PATTERN = re.compile(r"^\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}_")
 SAFE_FILENAME_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
 
@@ -41,18 +42,14 @@ def _sanitize_filename_component(value: str, fallback: str) -> str:
     return sanitized or fallback
 
 
-def _derive_outputs(out_path: str | None, output_dir: str, model: str) -> tuple[str, str, str]:
-    timestamp = _local_filename_timestamp()
+def _derive_outputs(out_path: str | None, output_dir: str, scan_id: str) -> tuple[str, str, str]:
     if out_path:
         requested_path = Path(out_path)
         base_name = requested_path.stem if requested_path.suffix else requested_path.name
         safe_base_name = _sanitize_filename_component(base_name, "report")
-        if not TIMESTAMP_PATTERN.match(safe_base_name):
-            safe_base_name = f"{timestamp}_{safe_base_name}"
         markdown = requested_path.with_name(f"{safe_base_name}.md")
     else:
-        safe_model = _sanitize_filename_component(model, "model")
-        markdown = Path(output_dir) / f"{timestamp}_{safe_model}.md"
+        markdown = Path(output_dir) / f"{scan_id}.md"
     json_path = markdown.with_suffix(".json")
     html_path = markdown.with_suffix(".html")
     return str(markdown), str(json_path), str(html_path)
@@ -70,6 +67,7 @@ def load_scan_config(args: Any) -> ScanConfig:
 
     scan_cfg = raw.get("scan", {})
     target_cfg = raw.get("target", {})
+    garak_cfg = raw.get("garak", {})
     generation_cfg = raw.get("generation", {})
     probe_cfg = raw.get("probes", {})
     reporting_cfg = raw.get("reporting", {})
@@ -86,20 +84,34 @@ def load_scan_config(args: Any) -> ScanConfig:
     if not model:
         raise ConfigError("Missing model name")
 
-    included = probe_cfg.get("include", ["all"])
-    probes = args.probes.split(",") if getattr(args, "probes", None) else included
-    probes = [item.strip() for item in probes if item.strip()]
-    probes = _expand_probe_groups(probes)
-    probe_limit = getattr(args, "limit", None)
-    if probe_limit is not None and probe_limit < 1:
-        raise ConfigError("Probe limit must be greater than 0")
+    probe_spec = getattr(args, "probes", None) or garak_cfg.get("probe_spec")
+    if not probe_spec:
+        included = probe_cfg.get("include", ["all"])
+        probe_spec = ",".join(_expand_probe_groups([item.strip() for item in included if item.strip()]))
+    detector_spec = getattr(args, "detectors", None) or garak_cfg.get("detector_spec", "auto")
+    timeout_seconds = int(getattr(args, "timeout", None) or garak_cfg.get("timeout_seconds", generation_cfg.get("timeout_seconds", 900)))
+    if timeout_seconds < 1:
+        raise ConfigError("Timeout must be greater than 0")
+    scan_id = f"{_local_filename_timestamp()}_{_sanitize_filename_component(model, 'model')}"
 
-    output_dir = reporting_cfg.get("output_dir", "reports")
-    markdown_path, json_path, html_path = _derive_outputs(args.out, output_dir, model)
+    output_root = Path(reporting_cfg.get("output_dir", "reports"))
+    modelguard_output_dir = output_root / "modelguard"
+    garak_artifact_dir = output_root / "garak" / scan_id
+    markdown_path, json_path, html_path = _derive_outputs(args.out, str(modelguard_output_dir), scan_id)
     fail_on = (args.fail_on or threshold_cfg.get("fail_on", "high")).lower()
     evidence = reporting_cfg.get("evidence", "redacted")
     if evidence not in {"redacted", "summary", "full"}:
         raise ConfigError(f"Unsupported evidence mode: {evidence}")
+
+    garak_command = garak_cfg.get("command", "python3 -m garak")
+    if isinstance(garak_command, str):
+        command_parts = shlex.split(garak_command)
+    elif isinstance(garak_command, list) and all(isinstance(item, str) for item in garak_command):
+        command_parts = list(garak_command)
+    else:
+        raise ConfigError("garak.command must be a string or list of strings")
+    if not command_parts:
+        raise ConfigError("garak.command must not be empty")
 
     generation = {
         "temperature": generation_cfg.get("temperature", 0),
@@ -111,7 +123,8 @@ def load_scan_config(args: Any) -> ScanConfig:
         "max_errors": threshold_cfg.get("max_errors", 3),
     }
     reporting = {
-        "output_dir": output_dir,
+        "output_dir": str(modelguard_output_dir),
+        "garak_output_dir": str(garak_artifact_dir),
         "evidence": evidence,
         "formats": reporting_cfg.get("formats", ["json", "markdown"]),
     }
@@ -125,8 +138,17 @@ def load_scan_config(args: Any) -> ScanConfig:
         target_type=target_type,
         model=model,
         base_url=base_url,
-        probes=probes,
-        probe_limit=probe_limit,
+        probes=[item.strip() for item in str(probe_spec).split(",") if item.strip()],
+        probe_limit=None,
+        probe_spec=str(probe_spec),
+        detector_spec=str(detector_spec),
+        generations=int(garak_cfg.get("generations", 5)),
+        extended_detectors=bool(garak_cfg.get("extended_detectors", False)),
+        timeout_seconds=timeout_seconds,
+        garak_command=command_parts,
+        garak_extra_args=[str(item) for item in garak_cfg.get("extra_args", [])],
+        garak_artifact_dir=str(garak_artifact_dir),
+        scan_id=scan_id,
         output_markdown=markdown_path,
         output_json=json_path,
         output_html=html_path,

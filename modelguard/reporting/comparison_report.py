@@ -5,7 +5,6 @@ from pathlib import Path
 from typing import Any
 
 from modelguard.reporting.common import escape_html, format_elapsed_seconds, format_latency_ms
-from modelguard.scoring import SEVERITY_ORDER
 
 
 STATUS_RANK = {"PASS": 0, "WARN": 1, "FAIL": 2, "ERROR": 3, "MISSING": 4}

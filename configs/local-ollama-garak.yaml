@@ -1,0 +1,39 @@
+scan:
+  name: local-deepseek-garak
+  description: Local Ollama garak orchestration proof of concept
+
+target:
+  type: ollama
+  base_url: http://localhost:11434
+  model: deepseek-r1:14b
+
+generation:
+  temperature: 0
+  max_tokens: 512
+  timeout_seconds: 60
+
+garak:
+  command: python3 -m garak
+  probe_spec: test.Test
+  detector_spec: auto
+  generations: 5
+  extended_detectors: false
+  timeout_seconds: 900
+  extra_args: []
+
+reporting:
+  output_dir: reports
+  formats:
+    - json
+    - markdown
+    - html
+  evidence: redacted
+
+thresholds:
+  fail_on: high
+  max_errors: 3
+
+limits:
+  max_probes: 50
+  requests_per_minute: 30
+  max_cost_usd: 0

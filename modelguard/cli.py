@@ -5,21 +5,21 @@ import sys
 
 from modelguard import __version__
 from modelguard.config import ConfigError, load_scan_config
+from modelguard.orchestration.scan_orchestrator import ScanExecutionError, ScanTimeoutError, run_scan
 from modelguard.reporting.comparison_report import build_comparison_summary, load_scan_reports, write_comparison_report
-from modelguard.runner import TargetConnectionError, run_scan
 
 
 class HelpFormatter(argparse.ArgumentDefaultsHelpFormatter, argparse.RawDescriptionHelpFormatter):
     pass
 
 
-def build_parser() -> argparse.ArgumentParser:
+def build_scan_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="scanner.py",
+        prog="scanner.py scan",
         description=(
-            "ModelGuard is a lightweight Python AI vulnerability scanner. Inspired by "
-            "NVIDIA garak. It runs a small, safe probe set against a target model, evaluates "
-            "responses with simple detectors, and writes redacted reports."
+            "ModelGuard orchestrates NVIDIA garak for governed LLM security scanning. "
+            "It resolves target profiles, runs garak, captures evidence, and writes "
+            "normalized ModelGuard reports."
         ),
         epilog=(
             "Authorised use only:\n"
@@ -29,40 +29,24 @@ def build_parser() -> argparse.ArgumentParser:
             "\n"
             "Targets:\n"
             "  Only the local `ollama` target is supported today. Use `--target ollama`\n"
-            "  with `--model` to scan a locally available Ollama model. Cloud targets are\n"
-            "  intentionally not included yet.\n"
+            "  with `--model` to scan a locally available Ollama model through garak.\n"
+            "  Bedrock and OpenAI-compatible targets are future work.\n"
             "\n"
             "Report generation:\n"
-            "  Each scan writes Markdown, JSON, and HTML reports together. `--out` sets the\n"
-            "  Markdown filename, and the JSON and HTML reports are written beside it with\n"
-            "  matching stems.\n"
-            "\n"
-            "Probe limiting:\n"
-            "  `--limit` runs only the first N selected probes. Use this for quicker local\n"
-            "  validation runs while tuning a target or prompt set.\n"
-            "\n"
-            "Timestamped filenames:\n"
-            "  Output filenames are timestamped as `YYYY-MM-DD_HH-MM-SS_name.ext` to avoid\n"
-            "  overwriting earlier scans. If your `--out` filename already starts with a\n"
-            "  timestamp, it is preserved as-is.\n"
+            "  Each scan writes Markdown, JSON, and HTML reports under reports/modelguard,\n"
+            "  and preserves raw garak artefacts under reports/garak/<scan_id>/.\n"
             "\n"
             "Examples:\n"
-            "  python scanner.py --config configs/local-ollama.yaml\n"
-            "  python scanner.py --target ollama --model deepseek-r1:14b\n"
-            "  python scanner.py --target ollama --model llama3 --limit 2\n"
-            "  python scanner.py --target ollama --model mistral --out reports/test.md\n"
-            "\n"
-            "Example Ollama scans:\n"
-            "  python scanner.py --target ollama --model deepseek-r1:14b\n"
-            "  python scanner.py --target ollama --model llama3 --limit 2\n"
-            "  python scanner.py --target ollama --model mistral --out reports/test.md\n"
+            "  python scanner.py scan --config configs/local-ollama-garak.yaml\n"
+            "  python scanner.py scan --target ollama --model deepseek-r1:14b\n"
+            "  python scanner.py scan --target ollama --model deepseek-r1:14b --probes test.Test\n"
+            "  python scanner.py compare reports/modelguard/*.json --out reports/comparison.html\n"
             "\n"
             "Exit codes:\n"
             "  0 = completed successfully\n"
             "  1 = findings exceeded threshold\n"
             "  2+ = scanner/runtime/configuration errors\n"
             "       2 configuration error\n"
-            "       3 target connection error\n"
             "       4 runtime or scanner error"
         ),
         formatter_class=HelpFormatter,
@@ -73,14 +57,15 @@ def build_parser() -> argparse.ArgumentParser:
     general.add_argument("--version", action="version", version=f"ModelGuard {__version__}", help="Show the scanner version and exit")
 
     target = parser.add_argument_group("Target Selection")
-    target.add_argument("--config", default="configs/local-ollama.yaml", help="Path to YAML config file")
+    target.add_argument("--config", default="configs/local-ollama-garak.yaml", help="Path to YAML config file")
     target.add_argument("--target", help="Target adapter type")
     target.add_argument("--model", help="Target model name")
     target.add_argument("--base-url", default="http://localhost:11434", help="Target base URL")
 
     scan = parser.add_argument_group("Scan Behavior")
-    scan.add_argument("--probes", help="Comma-separated probe groups or probe ids")
-    scan.add_argument("--limit", type=int, help="Run only the first N selected probes")
+    scan.add_argument("--probes", help="Comma-separated garak probe spec")
+    scan.add_argument("--detectors", help="Comma-separated garak detector spec")
+    scan.add_argument("--timeout", type=int, help="Subprocess timeout in seconds")
     scan.add_argument("--fail-on", help="Severity threshold: info|low|medium|high|critical")
 
     reporting = parser.add_argument_group("Reporting")
@@ -124,8 +109,10 @@ def main(argv: list[str] | None = None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
     if argv and argv[0] == "compare":
         return _run_compare(argv[1:])
+    if argv and argv[0] == "scan":
+        argv = argv[1:]
 
-    parser = build_parser()
+    parser = build_scan_parser()
     args = parser.parse_args(argv)
     try:
         config = load_scan_config(args)
@@ -134,9 +121,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         return run_scan(config)
-    except TargetConnectionError as exc:
-        print(f"Target connection error: {exc}")
-        return 3
+    except (ScanTimeoutError, ScanExecutionError) as exc:
+        print(f"Runtime error: {exc}")
+        return 4
     except Exception as exc:  # pragma: no cover
         print(f"Runtime error: {exc}")
         return 4

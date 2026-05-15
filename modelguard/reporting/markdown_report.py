@@ -55,6 +55,14 @@ def write_markdown_report(scan_result: ScanResult, output_path: str) -> None:
         f"- Type: `{scan_result.target['type']}`",
         f"- Model: `{scan_result.target['model']}`",
         f"- Base URL: `{scan_result.target['base_url']}`",
+        f"- garak target type: `{scan_result.target.get('garak_target_type', '')}`",
+        f"- garak target name: `{scan_result.target.get('garak_target_name', '')}`",
+        "",
+        "## Evidence",
+        "",
+        f"- garak artefact dir: `{scan_result.evidence.get('garak_artifact_dir', '')}`",
+        f"- JSONL reports: `{', '.join(scan_result.evidence.get('jsonl_reports', []))}`",
+        f"- HTML reports: `{', '.join(scan_result.evidence.get('html_reports', []))}`",
         "",
         "## Findings",
         "",
@@ -107,6 +115,9 @@ def write_markdown_report(scan_result: ScanResult, output_path: str) -> None:
                 "",
                 f"- Status: `{result.status}`",
                 f"- Severity: `{result.severity}`",
+                f"- Score: `{result.score if result.score is not None else 'n/a'}`",
+                f"- Defcon: `{result.defcon if result.defcon is not None else 'n/a'}`",
+                f"- Passed / Total: `{result.passed_count if result.passed_count is not None else 0}/{result.total_evaluated if result.total_evaluated is not None else 0}`",
                 f"- Latency: `{format_latency_ms(result.response.latency_ms)}`",
                 "",
                 f"Prompt:\n{_code_block(result.prompt)}",
@@ -118,7 +129,7 @@ def write_markdown_report(scan_result: ScanResult, output_path: str) -> None:
         )
         for detector in result.detector_results:
             lines.append(
-                f"- `{detector.detector_id}` -> `{detector.status}` ({detector.confidence}): {detector.evidence}"
+                f"- `{detector.detector_id}` -> `{detector.status}` (confidence={detector.confidence}, score={detector.score if detector.score is not None else 'n/a'}, defcon={detector.defcon if detector.defcon is not None else 'n/a'}, passed={detector.passed_count if detector.passed_count is not None else 0}/{detector.total_evaluated if detector.total_evaluated is not None else 0}): {detector.evidence}"
             )
         lines.append("")
 

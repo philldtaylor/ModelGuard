@@ -20,7 +20,10 @@ def _render_detector_list(scan_result: ScanResult) -> str:
                 "<li>"
                 f"<span class=\"{_badge_class('status', detector.status)}\">{escape_html(detector.status)}</span> "
                 f"<strong>{escape_html(detector.detector_id)}</strong> "
-                f"(confidence: {detector.confidence:.2f}, triggered: {str(detector.triggered).lower()})"
+                f"(confidence: {detector.confidence:.2f}, score: {escape_html(str(detector.score if detector.score is not None else 'n/a'))}, "
+                f"defcon: {escape_html(str(detector.defcon if detector.defcon is not None else 'n/a'))}, "
+                f"passed: {escape_html(str(detector.passed_count if detector.passed_count is not None else 0))}/{escape_html(str(detector.total_evaluated if detector.total_evaluated is not None else 0))}, "
+                f"triggered: {str(detector.triggered).lower()})"
                 f"<div class=\"detail\"><div><strong>Evidence</strong><pre>{escape_html(detector.evidence)}</pre></div>"
                 f"<div><strong>Rationale</strong><pre>{escape_html(detector.rationale)}</pre></div></div>"
                 "</li>"
@@ -34,6 +37,9 @@ def _render_detector_list(scan_result: ScanResult) -> str:
             f"<h3>{escape_html(result.probe_id)} <span class=\"{_badge_class('status', result.status)}\">{escape_html(result.status)}</span> "
             f"<span class=\"{_badge_class('severity', result.severity)}\">{escape_html(result.severity)}</span></h3>"
             f"<p><strong>Category:</strong> {escape_html(result.category)} | <strong>Latency:</strong> {escape_html(latency)}</p>"
+            f"<p><strong>Score:</strong> {escape_html(str(result.score if result.score is not None else 'n/a'))} | "
+            f"<strong>Defcon:</strong> {escape_html(str(result.defcon if result.defcon is not None else 'n/a'))} | "
+            f"<strong>Passed / Total:</strong> {escape_html(str(result.passed_count if result.passed_count is not None else 0))}/{escape_html(str(result.total_evaluated if result.total_evaluated is not None else 0))}</p>"
             f"<p><strong>Recommendation:</strong> {escape_html(result.recommendation)}</p>"
             f"<div class=\"detail\"><div><strong>Prompt</strong><pre>{escape_html(result.prompt)}</pre></div>"
             f"<div><strong>Response</strong><pre>{escape_html(result.response.text)}</pre></div></div>"
@@ -157,6 +163,17 @@ def write_html_report(scan_result: ScanResult, output_path: str) -> None:
         <div><strong>Type</strong><br>{escape_html(str(scan_result.target['type']))}</div>
         <div><strong>Model</strong><br>{escape_html(str(scan_result.target['model']))}</div>
         <div><strong>Base URL</strong><br>{escape_html(str(scan_result.target['base_url']))}</div>
+        <div><strong>garak Target Type</strong><br>{escape_html(str(scan_result.target.get('garak_target_type', '')))}</div>
+        <div><strong>garak Target Name</strong><br>{escape_html(str(scan_result.target.get('garak_target_name', '')))}</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Evidence</h2>
+      <div class="meta">
+        <div><strong>garak Artefact Dir</strong><br>{escape_html(str(scan_result.evidence.get('garak_artifact_dir', '')))}</div>
+        <div><strong>JSONL Reports</strong><br>{escape_html(", ".join(scan_result.evidence.get('jsonl_reports', [])))}</div>
+        <div><strong>HTML Reports</strong><br>{escape_html(", ".join(scan_result.evidence.get('html_reports', [])))}</div>
       </div>
     </section>
 

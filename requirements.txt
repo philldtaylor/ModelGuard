@@ -1,3 +1,5 @@
 requests
 pyyaml
 pytest
+garak==0.15.0
+ollama

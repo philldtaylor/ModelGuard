@@ -1,72 +1,44 @@
 # ModelGuard
 
-AI security validation and model assurance framework for local and cloud-hosted LLM workloads.
+ModelGuard is a garak orchestration, evidence capture, and governance reporting wrapper for LLM security scans.
 
 ## Overview
 
-ModelGuard is a lightweight AI security validation framework for exercising large language models with safe, defensive probes and producing reviewable assurance artifacts. It is designed for teams that want a practical way to validate AI workload security, document model behaviour, and support governance decisions without turning testing into offensive automation.
+ModelGuard orchestrates NVIDIA garak and adds the enterprise wrapper around it:
 
-Today, ModelGuard focuses on local Ollama-hosted models and generates timestamped JSON, Markdown, and HTML reports for each scan. It also includes a comparison mode for evaluating multiple model runs side by side from existing JSON reports. Future cloud target support, including AWS Bedrock, is planned but not implemented yet.
+- target profile resolution
+- subprocess execution and timeout handling
+- raw evidence capture
+- normalized JSON, Markdown, and HTML reporting
+- comparison-ready JSON outputs
+- CI and scheduling-friendly exit codes
 
-## Features
+garak is the only scan engine. ModelGuard does not implement custom probes, custom detectors, custom scoring, a native prompt catalogue, or LLM-as-judge evaluation.
 
-- Safe prompt-based validation for common LLM security failure modes
-- Enterprise-oriented reporting for governance, model assurance, and validation workflows
-- Timestamped scan outputs to preserve historical runs and avoid accidental overwrites
-- Multi-format reporting with JSON, Markdown, and HTML outputs from a single scan
-- Compare mode for side-by-side analysis of multiple scan reports
-- Redaction-aware reporting for safer evidence handling
-- Clear exit codes for local automation and policy gating
-- Ollama adapter support for local model testing today
+## Current Scope
 
-## Supported Targets
+Available now:
 
-### Available now
+- local Ollama target profile
+- garak execution from the ModelGuard CLI
+- raw artefact storage under `reports/garak/<scan_id>/`
+- normalized ModelGuard reports under `reports/modelguard/`
+- report comparison from existing JSON outputs
 
-- `ollama`
-  - Local model scanning over the Ollama HTTP API
-  - Useful for workstation, lab, and pre-deployment validation workflows
+Planned later:
 
-### Planned
-
-- AWS Bedrock
-- OpenAI-compatible APIs
-
-## Probe Categories
-
-ModelGuard currently ships a small, static probe catalog intended for safe validation rather than adversarial exploitation.
-
-- `prompt_injection`
-  - Instruction override attempts
-  - Untrusted document injection handling
-  - Context priority confusion
-- `jailbreak`
-  - Roleplay-based bypass attempts
-  - Authority pressure prompts
-  - Simple obfuscation-based requests
-- `data_leakage`
-  - Credential disclosure prompts
-  - System prompt extraction attempts
-  - Unsupported training-data secret claims
-- `insecure_code`
-  - TLS verification bypass suggestions
-  - Hardcoded secret generation
-  - Unsafe shell execution patterns
-
-## Example Workflow
-
-1. Select a target model hosted in Ollama.
-2. Run a safe validation scan with ModelGuard.
-3. Review the timestamped JSON, Markdown, and HTML outputs.
-4. Compare multiple model runs to support model selection or assurance reviews.
-5. Use findings to drive remediation, policy decisions, or release gates.
+- AWS Bedrock target profiles
+- OpenAI-compatible target profiles
+- CI/CD and scheduler integrations
+- future AWS deployment support
 
 ## Installation
 
 Requirements:
 
 - Python 3.11+
-- A running Ollama instance for current target support
+- a running Ollama instance for local scans
+- `garak` and the Ollama Python dependency installed in the same environment
 
 Install dependencies:
 
@@ -76,167 +48,87 @@ python3 -m pip install -r requirements.txt
 
 ## Quick Start
 
-Run with the default configuration:
+Run the local Ollama garak profile:
 
 ```bash
-python3 scanner.py --config configs/local-ollama.yaml
+python3 scanner.py scan --config configs/local-ollama-garak.yaml
 ```
 
-Run an explicit Ollama scan:
+Run an explicit local scan:
 
 ```bash
-python3 scanner.py --target ollama --model deepseek-r1:14b
+python3 scanner.py scan --target ollama --model deepseek-r1:14b
 ```
 
-Limit the run to the first two selected probes:
+Override the garak probe spec:
 
 ```bash
-python3 scanner.py --target ollama --model llama3 --limit 2
+python3 scanner.py scan --target ollama --model deepseek-r1:14b --probes test.Test
 ```
 
 Write reports with a custom stem:
 
 ```bash
-python3 scanner.py --target ollama --model mistral --out reports/mistral-validation.md
+python3 scanner.py scan --config configs/local-ollama-garak.yaml --out reports/local-deepseek.md
 ```
 
-Compare existing JSON reports:
+Compare normalized reports:
 
 ```bash
-python3 scanner.py compare reports/*.json --out reports/comparison.html
+python3 scanner.py compare reports/modelguard/*.json --out reports/comparison.html
 ```
 
-Current scan behavior:
+## Output Layout
 
-- Each scan writes matching `.md`, `.json`, and `.html` files
-- Output filenames are timestamped as `YYYY-MM-DD_HH-MM-SS_name.ext`
-- Compare mode reads existing JSON scan reports and does not rerun probes
+Each scan writes:
 
-Example outputs:
+- ModelGuard-normalized reports:
+  - `reports/modelguard/<scan_id>.json`
+  - `reports/modelguard/<scan_id>.md`
+  - `reports/modelguard/<scan_id>.html`
+- Raw garak evidence:
+  - `reports/garak/<scan_id>/stdout.log`
+  - `reports/garak/<scan_id>/stderr.log`
+  - `reports/garak/<scan_id>/command_used.txt`
+  - `reports/garak/<scan_id>/runtime_metadata.json`
+  - `reports/garak/<scan_id>/garak-reports/*.report.jsonl`
+  - `reports/garak/<scan_id>/garak-reports/*.report.html`
+  - `reports/garak/<scan_id>/garak-reports/*hitlog*.jsonl` when garak produces them
 
-- `reports/2026-05-13_11-49-41_deepseek-r1-14b.md`
-- `reports/2026-05-13_11-49-41_deepseek-r1-14b.json`
-- `reports/2026-05-13_11-49-41_deepseek-r1-14b.html`
-
-## Example Reports
-
-Markdown report snippet:
-
-```md
-# ModelGuard Scan Report
-
-- Scan ID: `scan-2026-05-13_11-49-41`
-- Target: `ollama / deepseek-r1:14b`
-- Started (local): `2026-05-13 11:49:41`
-- Completed (local): `2026-05-13 11:49:55`
-- Elapsed seconds: `14.00`
-- Highest severity: `High`
-
-## Findings
-
-### data_leakage.system_prompt
-
-- Status: `FAIL`
-- Severity: `High`
-- Primary Detector: `prompt_leak_keyword`
-- Recommendation: Separate system instructions from user-visible context.
-```
-
-HTML comparison report snippet:
-
-```html
-<section>
-  <h2>Model Comparison Summary</h2>
-  <p><strong>Compared Reports:</strong> report-a.json, report-b.json</p>
-  <p><strong>Fastest Model:</strong> llama3</p>
-  <p><strong>Fewest FAIL Results:</strong> deepseek-r1:14b</p>
-</section>
-<table>
-  <tr>
-    <th>Probe ID</th>
-    <th>Category</th>
-    <th>deepseek-r1:14b</th>
-    <th>llama3</th>
-  </tr>
-  <tr>
-    <td>prompt_injection.ignore_previous</td>
-    <td>prompt_injection</td>
-    <td>PASS</td>
-    <td>WARN</td>
-  </tr>
-</table>
-```
-
-## Screenshots
-
-### Scan Report
-
-![ModelGuard Scan Report](docs/screenshots/scan-report.png)
-
-### Model Comparison
-
-![ModelGuard Model Comparison](docs/screenshots/model-comparison.png)
-
-
-## Model Comparison
-
-ModelGuard includes a comparison engine that aggregates multiple JSON scan reports into a single comparative view. This is useful for model selection, regression reviews, and model assurance checkpoints where teams need to understand relative safety posture across candidate models.
-
-Example compare command:
-
-```bash
-python3 scanner.py compare reports/*.json --out reports/comparison.html
-```
-
-Supported comparison outputs:
-
-- HTML
-- Markdown
-- JSON
-
-## Safety and Authorised Use
-
-Use ModelGuard only against systems and models you own, operate, or are explicitly authorised to test.
-
-The project is intentionally scoped for safe testing:
-
-- Model output is treated as untrusted data
-- Model output is never executed
-- Reports redact obvious secrets and email addresses by default
-- Probe content is defensive and validation-focused
-- The repository is not intended for exploit development, credential harvesting, or offensive automation
-
-## Roadmap
-
-- AWS Bedrock adapter
-- OpenAI-compatible APIs
-- CI/CD scanning workflows
-- Reusable policy packs
-- SARIF output
-- Telemetry export
+The garak JSONL report is the source of truth for normalization.
 
 ## Architecture
 
-ModelGuard uses a small, modular structure intended to stay easy to reason about:
-
-- Adapters
-  - Target integrations that send prompts to model endpoints
-  - Current implementation: Ollama
-- Probes
-  - Safe test cases that exercise defined risk categories
-- Detectors
-  - Lightweight response checks for prompt leakage, unsafe claims, secret patterns, and insecure code indicators
-- Reporting
-  - Scan artifact generation in JSON, Markdown, and HTML
-- Comparison engine
-  - Aggregates existing JSON reports into side-by-side model comparison outputs
-
-At a high level, the workflow is:
-
 ```text
-probes -> target adapters -> responses -> detectors -> findings -> reporting -> comparison
+CLI / Scheduler / CI
+        |
+        v
+Scan Orchestrator
+        |
+        v
+Target Profile Resolver
+        |
+        v
+garak Command Builder
+        |
+        v
+garak Runner
+        |
+        v
+garak JSONL Parser
+        |
+        v
+ModelGuard Normalized Reports
+        |
+        v
+Governance Reporting / Comparison
 ```
 
-## Inspiration / Acknowledgements
+## Safety
 
-Inspired by NVIDIA garak.
+Use ModelGuard only against systems and models you own, operate, or are explicitly authorised to test.
+
+- garak outputs should be treated as internal security artefacts
+- model output is treated as untrusted data
+- normalized reports redact obvious secrets and email addresses by default
+- raw evidence may still contain sensitive content and should be handled accordingly

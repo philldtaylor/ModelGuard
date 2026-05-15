@@ -1,0 +1,5 @@
+garak LLM vulnerability scanner v0.15.0 ( https://github.com/NVIDIA/garak ) at 2026-05-15T20:09:11.173923
+✋ DEPRECATION: --model_type on CLI is deprecated since version 0.13.1.pre1
+✋ DEPRECATION: --model_name on CLI is deprecated since version 0.13.1.pre1
+📜 logging to /home/phill/.local/share/garak/garak.log
+🦜 loading [1m[95mgenerator[0m: Ollama: deepseek-r1:14b
