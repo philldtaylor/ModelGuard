@@ -1,0 +1,9 @@
+garak LLM vulnerability scanner v0.15.0 ( https://github.com/NVIDIA/garak ) at 2026-05-16T20:01:20.331305
+📜 logging to /home/phill/.local/share/garak/garak.log
+🦜 loading [1m[95mgenerator[0m: Ollama: deepseek-r1:14b
+📜 reporting to /home/phill/projects/modelguard/reports/garak/2026-05-16_20-01-20_deepseek-r1-14b/garak-reports/2026-05-16_20-01-20_deepseek-r1-14b.report.jsonl
+🕵️  queue of [1m[93mprobes:[0m test.Test
+test.Test                                                                                always.Pass: [1m[92mPASS[0m  ok on   40/  40
+📜 report closed :) /home/phill/projects/modelguard/reports/garak/2026-05-16_20-01-20_deepseek-r1-14b/garak-reports/2026-05-16_20-01-20_deepseek-r1-14b.report.jsonl
+📜 report html summary being written to /home/phill/projects/modelguard/reports/garak/2026-05-16_20-01-20_deepseek-r1-14b/garak-reports/2026-05-16_20-01-20_deepseek-r1-14b.report.html
+✔️  garak run complete in 272.66s

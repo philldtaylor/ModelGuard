@@ -24,7 +24,7 @@ def _report_prefix(config: ScanConfig) -> str:
     artifact_dir = Path(config.garak_artifact_dir) / "garak-reports"
     artifact_dir.mkdir(parents=True, exist_ok=True)
     stem = _sanitize_filename_component(config.scan_id or config.model, "scan")
-    return str(artifact_dir / stem)
+    return str((artifact_dir / stem).resolve())
 
 
 def _print_start(config: ScanConfig, command: list[str]) -> None:

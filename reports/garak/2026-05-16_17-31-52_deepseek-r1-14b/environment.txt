@@ -1,0 +1,2 @@
+PATH=/home/phill/projects/modelguard/.venv/bin:/home/phill/.npm-global/bin:/home/phill/.local/bin:/home/phill/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games:/snap/bin:/snap/bin
+VIRTUAL_ENV=/home/phill/projects/modelguard/.venv

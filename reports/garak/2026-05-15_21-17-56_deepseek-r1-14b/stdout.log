@@ -1,0 +1,3 @@
+garak LLM vulnerability scanner v0.15.0 ( https://github.com/NVIDIA/garak ) at 2026-05-15T21:17:56.287162
+📜 logging to /home/phill/.local/share/garak/garak.log
+🦜 loading [1m[95mgenerator[0m: Ollama: deepseek-r1:14b

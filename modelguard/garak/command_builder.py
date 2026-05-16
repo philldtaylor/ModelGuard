@@ -33,6 +33,7 @@ def build_generator_options(config: ScanConfig) -> dict[str, object]:
 
 
 def build_garak_command(config: ScanConfig, report_prefix: str | Path) -> list[str]:
+    resolved_report_prefix = Path(report_prefix).resolve()
     command = list(config.garak_command)
     command.extend(
         [
@@ -43,7 +44,7 @@ def build_garak_command(config: ScanConfig, report_prefix: str | Path) -> list[s
             "--probes",
             config.probe_spec,
             "--report_prefix",
-            str(report_prefix),
+            str(resolved_report_prefix),
             "--generations",
             str(config.generations),
             "--generator_options",

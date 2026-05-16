@@ -1,0 +1,2 @@
+PATH=/home/phill/snap/codex/34/tmp/arg0/codex-arg0mX1dhz:/snap/codex/34/usr/sbin:/snap/codex/34/usr/bin:/snap/codex/34/sbin:/snap/codex/34/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/games:/usr/local/games
+VIRTUAL_ENV=/home/phill/projects/modelguard/.venv

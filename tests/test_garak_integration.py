@@ -35,12 +35,15 @@ def _config(tmp_path: Path):
 def test_command_builder_includes_ollama_target_and_report_prefix():
     with TemporaryDirectory() as temp_dir:
         config = _config(Path(temp_dir))
-        command = build_garak_command(config, "/tmp/garak-prefix")
+        command = build_garak_command(config, "reports/garak-prefix")
         assert command[:3] == ["python3", "-m", "garak"]
         assert "--target_type" in command
         assert "--target_name" in command
         assert "--report_prefix" in command
         assert "test.Test" in command
+        report_prefix = command[command.index("--report_prefix") + 1]
+        assert Path(report_prefix).is_absolute()
+        assert report_prefix == str(Path("reports/garak-prefix").resolve())
         options = build_generator_options(config)
         assert options["ollama"]["OllamaGeneratorChat"]["host"] == "localhost:11434"
         assert options["ollama"]["OllamaGeneratorChat"]["timeout"] == 60

@@ -1,0 +1,16 @@
+{
+  "started_at": "2026-05-16T19:01:20Z",
+  "completed_at": "2026-05-16T19:05:53Z",
+  "runtime_seconds": 273.03895058299986,
+  "timeout_seconds": 900,
+  "timed_out": false,
+  "exit_code": 0,
+  "report_prefix": "/home/phill/projects/modelguard/reports/garak/2026-05-16_20-01-20_deepseek-r1-14b/garak-reports/2026-05-16_20-01-20_deepseek-r1-14b",
+  "jsonl_reports": [
+    "/home/phill/projects/modelguard/reports/garak/2026-05-16_20-01-20_deepseek-r1-14b/garak-reports/2026-05-16_20-01-20_deepseek-r1-14b.report.jsonl"
+  ],
+  "html_reports": [
+    "/home/phill/projects/modelguard/reports/garak/2026-05-16_20-01-20_deepseek-r1-14b/garak-reports/2026-05-16_20-01-20_deepseek-r1-14b.report.html"
+  ],
+  "hitlog_reports": []
+}

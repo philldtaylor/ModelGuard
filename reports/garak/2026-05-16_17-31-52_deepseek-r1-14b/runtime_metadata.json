@@ -1,0 +1,12 @@
+{
+  "started_at": "2026-05-16T16:31:52Z",
+  "completed_at": "2026-05-16T16:31:53Z",
+  "runtime_seconds": 0.8017015959999299,
+  "timeout_seconds": 900,
+  "timed_out": false,
+  "exit_code": 1,
+  "report_prefix": "reports/garak/2026-05-16_17-31-52_deepseek-r1-14b/garak-reports/2026-05-16_17-31-52_deepseek-r1-14b",
+  "jsonl_reports": [],
+  "html_reports": [],
+  "hitlog_reports": []
+}

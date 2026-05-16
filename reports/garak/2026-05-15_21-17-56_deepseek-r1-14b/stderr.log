@@ -1,0 +1,20 @@
+Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "/home/phill/projects/modelguard/.venv-garak/lib/python3.14/site-packages/garak/__main__.py", line 14, in <module>
+    main()
+    ~~~~^^
+  File "/home/phill/projects/modelguard/.venv-garak/lib/python3.14/site-packages/garak/__main__.py", line 9, in main
+    cli.main(sys.argv[1:])
+    ~~~~~~~~^^^^^^^^^^^^^^
+  File "/home/phill/projects/modelguard/.venv-garak/lib/python3.14/site-packages/garak/cli.py", line 661, in main
+    command.start_run()  # start the run now that all config validation is complete
+    ~~~~~~~~~~~~~~~~~^^
+  File "/home/phill/projects/modelguard/.venv-garak/lib/python3.14/site-packages/garak/command.py", line 76, in start_run
+    _config.transient.reportfile = open(
+                                   ~~~~^
+        _config.transient.report_filename, "w", buffering=1, encoding="utf-8"
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+FileNotFoundError: [Errno 2] No such file or directory: '/home/phill/.local/share/garak/garak_runs/reports/garak/2026-05-15_21-17-56_deepseek-r1-14b/garak-reports/2026-05-15_21-17-56_deepseek-r1-14b.report.jsonl'
