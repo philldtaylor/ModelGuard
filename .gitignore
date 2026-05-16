@@ -10,3 +10,4 @@ reports/*.html
 !reports/validation-notes.md
 !reports/examples/
 !reports/examples/*.html
+README.md.bak
