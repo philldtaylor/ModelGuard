@@ -1,134 +1,126 @@
 # ModelGuard
 
-ModelGuard is a garak orchestration, evidence capture, and governance reporting wrapper for LLM security scans.
+ModelGuard is an enterprise orchestration and governance wrapper for NVIDIA garak.
 
-## Overview
+It runs garak against configured AI targets, preserves raw scan evidence, normalises garak output, and generates governance-friendly reports for AI security assurance, CI/CD workflows, and model comparison.
 
-ModelGuard orchestrates NVIDIA garak and adds the enterprise wrapper around it:
+ModelGuard is not a replacement for garak. It is designed to make garak easier to operate, evidence, and explain in enterprise environments.
 
-- target profile resolution
-- subprocess execution and timeout handling
-- raw evidence capture
-- normalized JSON, Markdown, and HTML reporting
-- comparison-ready JSON outputs
-- CI and scheduling-friendly exit codes
+## Relationship to garak
 
-garak is the only scan engine. ModelGuard does not implement custom probes, custom detectors, custom scoring, a native prompt catalogue, or LLM-as-judge evaluation.
+ModelGuard uses NVIDIA garak as its LLM vulnerability scanning engine.
 
-## Current Scope
+Garak provides the probes, detectors, and model safety evaluation logic. ModelGuard does not implement custom probes, custom detectors, custom scoring, or LLM-as-judge evaluation.
 
-Available now:
+### ModelGuard adds
 
-- local Ollama target profile
-- garak execution from the ModelGuard CLI
-- raw artefact storage under `reports/garak/<scan_id>/`
-- normalized ModelGuard reports under `reports/modelguard/`
-- report comparison from existing JSON outputs
+- Scan orchestration
+- Target configuration
+- Evidence preservation
+- JSONL normalisation
+- Markdown/JSON/HTML governance reports
+- Comparison-ready output
+- CI/CD and scheduling integration paths
 
-Planned later:
+### garak project
 
-- AWS Bedrock target profiles
-- OpenAI-compatible target profiles
-- CI/CD and scheduler integrations
-- future AWS deployment support
+https://github.com/NVIDIA/garak
 
-## Installation
+## What ModelGuard does not do
 
-Requirements:
+ModelGuard does not:
 
-- Python 3.11+
-- a running Ollama instance for local scans
-- `garak` and the Ollama Python dependency installed in the same environment
+- Replace garak
+- Implement custom vulnerability probes
+- Implement custom detector logic
+- Independently classify model responses
+- Provide exploit tooling
+- Claim that a scan result is a full security assessment
+
+All security findings originate from garak output and should be reviewed as security test signals.
+
+## MVP status
+
+This repository is an MVP demonstrating:
+
+- Local Ollama target support
+- garak subprocess orchestration
+- Raw garak artefact preservation
+- garak JSONL parsing
+- Normalised ModelGuard JSON reports
+- Markdown and HTML governance reporting
+- Basic automated tests for parser, normaliser, and smoke flow
+
+### Validated command
+
+```bash
+python scanner.py scan --config configs/local-ollama-garak.yaml
+```
+
+## Example output
+
+```text
+reports/
+├── garak/<scan_id>/
+│   ├── command_used.txt
+│   ├── environment.txt
+│   ├── runtime_metadata.json
+│   ├── stdout.log
+│   ├── stderr.log
+│   └── garak-reports/
+│       ├── <scan_id>.report.jsonl
+│       └── <scan_id>.report.html
+└── modelguard/
+    ├── <scan_id>.json
+    ├── <scan_id>.md
+    └── <scan_id>.html
+```
+
+## Quick start
+
+Create a virtual environment:
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+```
 
 Install dependencies:
 
 ```bash
-python3 -m pip install -r requirements.txt
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+python -m pip install garak
 ```
 
-## Quick Start
-
-Run the local Ollama garak profile:
+Run a scan:
 
 ```bash
-python3 scanner.py scan --config configs/local-ollama-garak.yaml
+python scanner.py scan --config configs/local-ollama-garak.yaml
 ```
 
-Run an explicit local scan:
+## Testing
 
 ```bash
-python3 scanner.py scan --target ollama --model deepseek-r1:14b
+ruff check .
+python -m pytest
 ```
 
-Override the garak probe spec:
+## Roadmap
 
-```bash
-python3 scanner.py scan --target ollama --model deepseek-r1:14b --probes test.Test
-```
+Planned next steps:
 
-Write reports with a custom stem:
+- Add curated garak scan profiles for CI and assurance workflows
+- Improve comparison reports across multiple model runs
+- Add AWS Bedrock target profiles
+- Add GitHub Actions examples
+- Add optional S3 evidence storage pattern
+- Add SARIF or CSV export for security tooling integration
 
-```bash
-python3 scanner.py scan --config configs/local-ollama-garak.yaml --out reports/local-deepseek.md
-```
+## Licence and attribution
 
-Compare normalized reports:
+ModelGuard is an independent wrapper around NVIDIA garak. It invokes garak as the scanning engine and normalises its output for governance reporting.
 
-```bash
-python3 scanner.py compare reports/modelguard/*.json --out reports/comparison.html
-```
+See the garak project for garak licensing and usage terms:
 
-## Output Layout
-
-Each scan writes:
-
-- ModelGuard-normalized reports:
-  - `reports/modelguard/<scan_id>.json`
-  - `reports/modelguard/<scan_id>.md`
-  - `reports/modelguard/<scan_id>.html`
-- Raw garak evidence:
-  - `reports/garak/<scan_id>/stdout.log`
-  - `reports/garak/<scan_id>/stderr.log`
-  - `reports/garak/<scan_id>/command_used.txt`
-  - `reports/garak/<scan_id>/runtime_metadata.json`
-  - `reports/garak/<scan_id>/garak-reports/*.report.jsonl`
-  - `reports/garak/<scan_id>/garak-reports/*.report.html`
-  - `reports/garak/<scan_id>/garak-reports/*hitlog*.jsonl` when garak produces them
-
-The garak JSONL report is the source of truth for normalization.
-
-## Architecture
-
-```text
-CLI / Scheduler / CI
-        |
-        v
-Scan Orchestrator
-        |
-        v
-Target Profile Resolver
-        |
-        v
-garak Command Builder
-        |
-        v
-garak Runner
-        |
-        v
-garak JSONL Parser
-        |
-        v
-ModelGuard Normalized Reports
-        |
-        v
-Governance Reporting / Comparison
-```
-
-## Safety
-
-Use ModelGuard only against systems and models you own, operate, or are explicitly authorised to test.
-
-- garak outputs should be treated as internal security artefacts
-- model output is treated as untrusted data
-- normalized reports redact obvious secrets and email addresses by default
-- raw evidence may still contain sensitive content and should be handled accordingly
+https://github.com/NVIDIA/garak
