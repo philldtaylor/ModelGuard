@@ -1,1 +1,0 @@
-garak --model_type ollama --model_name deepseek-r1:14b --probes test.Test --report_prefix "/home/phill/projects/modelguard/garak-evidence/garak-reports/modelguard-deepseek-test"
